@@ -19,12 +19,12 @@ from logic.models import (Warehouse, Order, PickerRobot, TransportRobot,
 from logic.search import ALGORITHMS, BFS, DFS, get_algorithm, compare, benchmark
 from logic.agents import GoalBasedAgent, LearningAgent, SimpleReflexAgent
 
-# Vercel serves files from /public through its static asset layer. Locally,
-# Flask serves the same root-level asset URLs from /static.
-if os.environ.get("VERCEL"):
-    app = Flask(__name__, static_folder=None)
-else:
-    app = Flask(__name__, static_folder="static", static_url_path="")
+# Keep the Flask instance as a direct top-level assignment so Vercel's Flask
+# runtime can discover it. Vercel serves assets from /public; locally Flask
+# serves the same root-level asset URLs from /static.
+_on_vercel = bool(os.environ.get("VERCEL"))
+app = Flask(__name__, static_folder=None if _on_vercel else "static",
+            static_url_path=None if _on_vercel else "")
 
 AGENT_TYPES = {"reflex": SimpleReflexAgent, "goal": GoalBasedAgent, "learning": LearningAgent}
 HISTORY_LIMIT = 200
