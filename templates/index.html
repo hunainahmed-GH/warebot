@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WareBot dashboard</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<aside class="rail">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <div><strong>WareBot</strong><small>Warehouse simulation</small></div>
+  </div>
+  <nav class="tabs" role="tablist" aria-label="Dashboard sections">
+    <button role="tab" data-tab="overview" aria-selected="true">Overview</button>
+    <button role="tab" data-tab="warehouse" aria-selected="false">Warehouse</button>
+    <button role="tab" data-tab="orders" aria-selected="false">Orders</button>
+    <button role="tab" data-tab="robots" aria-selected="false">Robots</button>
+    <button role="tab" data-tab="analytics" aria-selected="false">Analytics</button>
+  </nav>
+  <div class="rail-foot">
+    <button class="btn primary wide" id="runAll">Run all robots</button>
+    <p class="hint">Robots work through every open order using their chosen algorithm.</p>
+  </div>
+</aside>
+
+<main>
+
+<!-- Overview -->
+<section id="tab-overview" class="tab" role="tabpanel">
+  <header class="page-head"><h1>Overview</h1><p>Orders and robots at a glance.</p></header>
+  <div class="kpis" id="kpis"></div>
+  <div class="two">
+    <div class="panel"><h2>Order pipeline</h2><div id="statusChart"></div></div>
+    <div class="panel"><h2>Recent activity</h2><ol class="log" id="log"></ol></div>
+  </div>
+</section>
+
+<!-- Warehouse -->
+<section id="tab-warehouse" class="tab" role="tabpanel" hidden>
+  <header class="page-head"><h1>Warehouse</h1><p>Pick a start and a goal on the map, then watch the search explore the grid.</p></header>
+  <div class="toolbar">
+    <div class="seg" role="group" aria-label="Click mode">
+      <button data-mode="path" aria-pressed="true">Find path</button>
+      <button data-mode="edit" aria-pressed="false">Edit shelves</button>
+    </div>
+    <label>Algorithm
+      <select id="algoSel"><option>A*</option><option>BFS</option><option>DFS</option></select>
+    </label>
+    <button class="btn" id="btnCompare">Compare all three</button>
+    <button class="btn" id="btnScan">Scan warehouse (DFS)</button>
+    <button class="btn" id="btnNearest">Nearest order (BFS)</button>
+    <button class="btn ghost" id="btnClear">Clear overlay</button>
+  </div>
+  <div class="map-layout">
+    <div class="panel map-panel">
+      <div id="mapwrap"><canvas id="map" aria-label="Warehouse grid map"></canvas></div>
+      <div class="map-foot"><span id="hoverCell">Hover a cell</span><span id="pickHint"></span></div>
+    </div>
+    <div class="side">
+      <div class="panel"><h2>Result</h2><div id="result" class="result"><p class="empty">No search yet. Click a start cell and a goal cell.</p></div></div>
+      <div class="panel"><h2>Layout</h2>
+        <div class="form-grid">
+          <label>Size
+            <select id="sizeSel"><option value="10">10 x 10</option><option value="15" selected>15 x 15</option><option value="20">20 x 20</option></select>
+          </label>
+          <label>Shelf density <output id="densOut">0.15</output>
+            <input type="range" id="density" min="0" max="0.4" step="0.05" value="0.15">
+          </label>
+        </div>
+        <div class="row">
+          <button class="btn" id="btnShelves">New shelves</button>
+          <button class="btn" id="btnReset">New warehouse</button>
+        </div>
+      </div>
+      <div class="panel"><h2>Map key</h2>
+        <ul class="key">
+          <li><i class="k shelf"></i>Shelf (obstacle)</li>
+          <li><i class="k station"></i>Charging station</li>
+          <li><i class="k pick"></i>Picker robot</li>
+          <li><i class="k carry"></i>Transport robot</li>
+          <li><i class="k src"></i>Order pickup</li>
+          <li><i class="k dst"></i>Order drop-off</li>
+          <li><i class="k busy"></i>Busy aisle (learned)</li>
+          <li><i class="k seen"></i>Explored by search</li>
+          <li><i class="k route"></i>Final path</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Orders -->
+<section id="tab-orders" class="tab" role="tabpanel" hidden>
+  <header class="page-head"><h1>Orders</h1><p>Each order moves from Pending to Delivered.</p></header>
+  <form class="panel order-form" id="orderForm">
+    <h2>New order</h2>
+    <div class="form-grid cells">
+      <label>Pickup row<input type="number" name="sr" min="0" value="1" required></label>
+      <label>Pickup column<input type="number" name="sc" min="0" value="1" required></label>
+      <label>Drop-off row<input type="number" name="dr" min="0" value="5" required></label>
+      <label>Drop-off column<input type="number" name="dc" min="0" value="5" required></label>
+      <label>Priority (1 to 5)<input type="number" name="pr" min="1" max="5" value="1" required></label>
+    </div>
+    <div class="row">
+      <button class="btn primary" type="submit">Add order</button>
+      <button class="btn" type="button" id="btnRandomOrder">Add random order</button>
+    </div>
+  </form>
+  <div class="pipeline" id="pipeline"></div>
+</section>
+
+<!-- Robots -->
+<section id="tab-robots" class="tab" role="tabpanel" hidden>
+  <header class="page-head"><h1>Robots</h1><p>Choose how each robot decides and which search it uses.</p></header>
+  <div class="robots" id="robots"></div>
+</section>
+
+<!-- Analytics -->
+<section id="tab-analytics" class="tab" role="tabpanel" hidden>
+  <header class="page-head"><h1>Analytics</h1><p>BFS, DFS and A* compared on random grids, using real runs of the code.</p></header>
+  <div class="panel">
+    <div class="chart-head">
+      <h2>Sparse vs dense grids</h2>
+      <label>Metric
+        <select id="metricSel">
+          <option value="avg_nodes">Nodes explored</option>
+          <option value="avg_length">Path length</option>
+          <option value="avg_time_ms">Execution time (ms)</option>
+        </select>
+      </label>
+      <button class="btn" id="btnBench">Run benchmark again</button>
+    </div>
+    <div id="benchChart" class="chart"></div>
+    <p class="hint" id="benchNote"></p>
+  </div>
+  <div class="panel"><h2>Live results from the robots</h2><div id="liveTable"></div></div>
+</section>
+
+</main>
+
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="/app.js"></script>
+</body>
+</html>
